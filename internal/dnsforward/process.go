@@ -3,6 +3,7 @@ package dnsforward
 import (
 	"context"
 	"encoding/binary"
+	"math/rand"
 	"net"
 	"net/netip"
 	"strings"
@@ -607,6 +608,7 @@ func (s *Server) setCustomUpstream(ctx context.Context, pctx *proxy.DNSContext, 
 func (s *Server) processFilteringAfterResponse(ctx context.Context, dctx *dnsContext) (rc resultCode) {
 	s.logger.DebugContext(ctx, "started processing filtering after response")
 	defer s.logger.DebugContext(ctx, "finished processing filtering after response")
+	Shuffle(dctx.proxyCtx.Res.Answer)
 
 	switch res := dctx.result; res.Reason {
 	case filtering.NotFilteredAllowList:
@@ -644,7 +646,6 @@ func (s *Server) filterAfterResponse(ctx context.Context, dctx *dnsContext) (res
 	if !dctx.protectionEnabled || !dctx.responseFromUpstream {
 		return resultCodeSuccess
 	}
-
 	err := s.filterDNSResponse(ctx, dctx)
 	if err != nil {
 		dctx.err = err
@@ -653,4 +654,12 @@ func (s *Server) filterAfterResponse(ctx context.Context, dctx *dnsContext) (res
 	}
 
 	return resultCodeSuccess
+}
+
+func Shuffle[T any](slice []T) {
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	for n := len(slice); n > 0; n-- {
+		randIndex := r.Intn(n)
+		slice[n-1], slice[randIndex] = slice[randIndex], slice[n-1]
+	}
 }
