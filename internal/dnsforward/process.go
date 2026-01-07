@@ -608,7 +608,25 @@ func (s *Server) setCustomUpstream(ctx context.Context, pctx *proxy.DNSContext, 
 func (s *Server) processFilteringAfterResponse(ctx context.Context, dctx *dnsContext) (rc resultCode) {
 	s.logger.DebugContext(ctx, "started processing filtering after response")
 	defer s.logger.DebugContext(ctx, "finished processing filtering after response")
-	Shuffle(dctx.proxyCtx.Res.Answer)
+
+	ans := dctx.proxyCtx.Res.Answer
+	ansA := make([]dns.RR, 0, len(ans))
+	for i := range ans {
+		rtype := ans[i].Header().Rrtype
+		if rtype == dns.TypeA {
+			ansA = append(ansA, ans[i])
+		}
+	}
+	Shuffle(ansA)
+	anow := 0
+	for i := range ans {
+		rtype := ans[i].Header().Rrtype
+		if rtype == dns.TypeA {
+			ans[i] = ansA[anow]
+			anow += 1
+		}
+
+	}
 
 	switch res := dctx.result; res.Reason {
 	case filtering.NotFilteredAllowList:
